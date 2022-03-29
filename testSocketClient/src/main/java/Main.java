@@ -1,3 +1,4 @@
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -12,10 +13,12 @@ public class Main {
     public String nick;
     public String group;
 
+
     public Main(String nick, String group, Socket skt) throws IOException, JSONException {
         this.skt = skt;
         this.group = group;
         this.nick = nick;
+
 
         this.out = new PrintWriter(skt.getOutputStream(), true);
         this.in = new BufferedReader(new InputStreamReader(skt.getInputStream()));
@@ -24,19 +27,32 @@ public class Main {
         loginData.put("nickname", nick);
         this.send("login", loginData);
 
-        JSONObject joinData = new JSONObject();
-        joinData.put("group_name", group);
-        this.send("join", joinData);
+//        JSONObject joinData = new JSONObject();
+//        joinData.put("group_name", group);
+//        this.send("join", joinData);
+
 
         this.receiver();
 
         while (true) {
             String msg = new Scanner(System.in).nextLine();
-            System.out.println("Sending message: '" + msg + "'");
-            JSONObject message = new JSONObject();
-            message.put("group", group);
-            message.put("content", msg);
-            this.send("message", message);
+            String[] command = msg.split(" ");
+            String commandName = command[0].replace("/", "");
+            JSONArray arguments = new JSONArray();
+            for (int i = 1; i < command.length; i++) {
+                arguments.put(command[i]);
+            }
+
+            Commands commands = Commands.getEnum(commandName);
+            if (commands == null) {
+                System.out.println("invalid command");
+                continue;
+            }
+            System.out.println("command: '" + commands.ordinal() + "' / Argument: " + arguments);
+            JSONObject cmdData = new JSONObject();
+            cmdData.put("cmd", commands.ordinal());
+            cmdData.put("args", arguments);
+            this.send("/cmd", cmdData);
         }
     }
 
@@ -93,8 +109,8 @@ public class Main {
         br = new BufferedReader(new InputStreamReader(System.in));
         System.out.println("Enter nick:");
         String nick = br.readLine();
-        System.out.println("Enter group:");
-        String group = br.readLine();
+//        System.out.println("Enter group:");
+//        String group = br.readLine();
 
         String hostname = "127.0.0.1";
         int port = 2022;
@@ -102,7 +118,7 @@ public class Main {
         try {
             Socket skt = new Socket(hostname, port);
             System.out.println("Client has connected with server " + hostname + ":" + port);
-            new Main(nick, group, skt);
+            new Main(nick, null, skt);
         } catch (IOException | JSONException ex) {
 
             System.out.println("I/O error: " + ex.getMessage());
